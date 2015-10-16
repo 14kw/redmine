@@ -75,6 +75,7 @@ namespace :redmine do
             real_now - @fake_diff.to_i
           end
           def fake(time)
+            time = 0 if time.nil?
             @fake_diff = real_now - time
             res = yield
             @fake_diff = 0
@@ -92,7 +93,7 @@ namespace :redmine do
         # If this attribute is set a milestone has a defined target timepoint
         def due
           if read_attribute(:due) && read_attribute(:due) > 0
-            Time.at(read_attribute(:due)).to_date
+            Time.at(read_attribute(:due) * TRAC_TIME_EPOCH_FACTOR).to_date
           else
             nil
           end
@@ -100,7 +101,7 @@ namespace :redmine do
         # This is the real timepoint at which the milestone has finished.
         def completed
           if read_attribute(:completed) && read_attribute(:completed) > 0
-            Time.at(read_attribute(:completed)).to_date
+            Time.at(read_attribute(:completed) * TRAC_TIME_EPOCH_FACTOR).to_date
           else
             nil
           end
@@ -120,7 +121,7 @@ namespace :redmine do
         self.table_name = :attachment
         set_inheritance_column :none
 
-        def time; Time.at(read_attribute(:time)) end
+        def time; Time.at(read_attribute(:time) * TRAC_TIME_EPOCH_FACTOR) end
 
         def original_filename
           filename
@@ -185,8 +186,8 @@ namespace :redmine do
           read_attribute(:description).blank? ? summary : read_attribute(:description)
         end
 
-        def time; Time.at(read_attribute(:time)) end
-        def changetime; Time.at(read_attribute(:changetime)) end
+        def time; Time.at(read_attribute(:time) * TRAC_TIME_EPOCH_FACTOR) end
+        def changetime; Time.at(read_attribute(:changetime) * TRAC_TIME_EPOCH_FACTOR) end
       end
 
       class TracTicketChange < ActiveRecord::Base
@@ -197,7 +198,7 @@ namespace :redmine do
           super.select {|column| column.name.to_s != 'field'}
         end
 
-        def time; Time.at(read_attribute(:time)) end
+        def time; Time.at(read_attribute(:time) * TRAC_TIME_EPOCH_FACTOR) end
       end
 
       TRAC_WIKI_PAGES = %w(InterMapTxt InterTrac InterWiki RecentChanges SandBox TracAccessibility TracAdmin TracBackup TracBrowser TracCgi TracChangeset \
@@ -221,7 +222,7 @@ namespace :redmine do
           TracMigrate::TracAttachment.all(:conditions => ["type = 'wiki' AND id = ?", self.id.to_s])
         end
 
-        def time; Time.at(read_attribute(:time)) end
+        def time; Time.at(read_attribute(:time) * TRAC_TIME_EPOCH_FACTOR) end
       end
 
       class TracPermission < ActiveRecord::Base
@@ -757,7 +758,7 @@ namespace :redmine do
       prompt('Trac database password') {|password| TracMigrate.set_trac_db_password password}
     end
     prompt('Trac database encoding', :default => 'UTF-8') {|encoding| TracMigrate.encoding encoding}
-    prompt('Target project identifier') {|identifier| TracMigrate.target_project_identifier identifier}
+    prompt('Target project identifier in lowercase') {|identifier| TracMigrate.target_project_identifier identifier}
     puts
 
     old_notified_events = Setting.notified_events
